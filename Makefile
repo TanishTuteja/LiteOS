@@ -3,11 +3,17 @@ LD = ld
 AS = nasm
 
 CFLAGS = -m32 -ffreestanding -fno-pic -fno-pie -Wall -Wextra
-LDFLAGS = -m elf_i386 -T linker.ld --oformat binary
+LDFLAGS = -m elf_i386 -T linker.ld
 
-all: kernel.bin
+all: liteos.iso
 
-kernel.bin: boot.o kernel.o
+liteos.iso: kernel.elf grub/grub.cfg
+	mkdir -p iso/boot/grub
+	cp kernel.elf iso/boot/
+	cp grub/grub.cfg iso/boot/grub/
+	grub-mkrescue -o $@ iso/
+
+kernel.elf: boot.o kernel.o
 	$(LD) $(LDFLAGS) -o $@ $^
 
 boot.o: boot.asm
@@ -17,6 +23,10 @@ kernel.o: kernel.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o *.bin
+	rm -f *.o *.bin *.iso *.elf
+	rm -rf iso/
 
 rebuild: clean all
+
+run: liteos.iso
+	qemu-system-x86_64 -cdrom liteos.iso
