@@ -1,0 +1,16 @@
+# Build outputs
+*.o
+*.bin
+*.iso
+
+# Temporary files
+*.log
+*.tmp
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+
+# OS junk
+.DS_Store
