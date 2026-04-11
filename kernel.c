@@ -265,6 +265,9 @@ void kernel_main()
 
     clear_screen();
 
+    char kb_buff[256];
+    int kb_buff_index = 0;
+
     while (1)
     {
         unsigned char status = get_kb_status();
@@ -278,8 +281,27 @@ void kernel_main()
             char scancode_hex[3];
             char_to_hex(scancode, scancode_hex);
 
+            if (scancode == 0x1C) // Enter key
+            {
+                kb_buff[kb_buff_index] = '\0'; // Null-terminate the buffer
+                print_prompt(kb_buff);         // Print the command prompt with the entered command
+                terminal_print("\n");
+                kb_buff_index = 0; // Reset buffer index for the next command
+                continue;
+            }
+            else if (scancode == 0x0E) // Backspace key
+            {
+                if (kb_buff_index > 0)
+                {
+                    kb_buff_index--; // Move back the buffer index
+                }
+                terminal_print("Backspace pressed\n");
+                continue;
+            }
+
             char ascii = KEYBOARD_LUT[scancode];
             char key_pressed[2] = {ascii, '\0'};
+            kb_buff[kb_buff_index++] = ascii;
 
             serial_write_string("Key pressed: ");
             serial_write_string(key_pressed);
