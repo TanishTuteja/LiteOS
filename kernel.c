@@ -28,6 +28,22 @@ static int strlen(const char* str)
     return len;
 }
 
+static void memcpy(char* dest, const char* src, int count)
+{
+    for (int i = 0; i < count; i++)
+    {
+        dest[i] = src[i];
+    }
+}
+
+static void scroll()
+{
+    int src_index = cols * 2;
+    int dest_index = 0;
+    int count = (rows - 1) * cols * 2;
+    memcpy(video_memory + dest_index, video_memory + src_index, count);
+}
+
 static void terminal_putchar(char c)
 {
     if (c == '\n')
@@ -52,7 +68,8 @@ static void terminal_putchar(char c)
     }
     if (cursor_row >= rows)
     {
-        cursor_row = 0; // Reset to the top of the screen
+        scroll();
+        cursor_row = rows - 1; // Reset to the bottom of the screen
     }
 }
 
