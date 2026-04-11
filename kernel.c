@@ -5,6 +5,39 @@ static const int VGA_HEIGHT = 25;
 static int cursor_row = 0;
 static int cursor_col = 0;
 
+static const unsigned char KEYBOARD_LUT[128] = {
+    0,    27,  '1', '2', '3',  '4', '5', '6', '7',  '8', /* 9 */
+    '9',  '0', '-', '=', '\b',                           /* Backspace */
+    '\t',                                                /* Tab */
+    'q',  'w', 'e', 'r',                                 /* 19 */
+    't',  'y', 'u', 'i', 'o',  'p', '[', ']', '\n',      /* Enter key */
+    0,                                                   /* 29   - Control */
+    'a',  's', 'd', 'f', 'g',  'h', 'j', 'k', 'l',  ';', /* 39 */
+    '\'', '`', 0,                                        /* Left shift */
+    '\\', 'z', 'x', 'c', 'v',  'b', 'n',                 /* 49 */
+    'm',  ',', '.', '/', 0,                              /* Right shift */
+    '*',  0,                                             /* Alt */
+    ' ',                                                 /* Space bar */
+    0,                                                   /* Caps lock */
+    0,                                                   /* 59 - F1 key ... > */
+    0,    0,   0,   0,   0,    0,   0,   0,   0,         /* < ... F10 */
+    0,                                                   /* 69 - Num lock*/
+    0,                                                   /* Scroll Lock */
+    0,                                                   /* Home key */
+    0,                                                   /* Up Arrow */
+    0,                                                   /* Page Up */
+    '-',  0,                                             /* Left Arrow */
+    0,    0,                                             /* Right Arrow */
+    '+',  0,                                             /* 79 - End key*/
+    0,                                                   /* Down Arrow */
+    0,                                                   /* Page Down */
+    0,                                                   /* Insert Key */
+    0,                                                   /* Delete Key */
+    0,    0,   0,   0,                                   /* F11 Key */
+    0,                                                   /* F12 Key */
+    0,                                                   /* All other keys are undefined */
+};
+
 static inline void serial_write(char c)
 {
     asm volatile("outb %0, %1" : : "a"(c), "Nd"(0x3F8));
@@ -182,35 +215,80 @@ static int int_to_string(int value, char* buffer)
     return i;
 }
 
+static int char_to_hex(unsigned char value, char* buffer)
+{
+    int i = 0;
+
+    if (value == 0)
+    {
+        buffer[0] = '0';
+        buffer[1] = '\0';
+        return;
+    }
+
+    while (value > 0)
+    {
+        unsigned char digit = value % 16;
+        serial_write_string("Digit: ");
+        buffer[i++] = digit > 9 ? digit - 10 + 'A' : digit + '0'; // Convert digit to character
+        value /= 16;
+    }
+    buffer[i] = '\0';
+
+    // Reverse the string
+    for (int j = 0; j < i / 2; j++)
+    {
+        char temp_char = buffer[j];
+        buffer[j] = buffer[i - j - 1];
+        buffer[i - j - 1] = temp_char;
+    }
+    return i;
+}
+
+unsigned char poll_kb()
+{
+    unsigned char scancode;
+    asm volatile("inb %1, %0" : "=a"(scancode) : "Nd"(0x60));
+    return scancode;
+}
+
+unsigned char get_kb_status()
+{
+    unsigned char status;
+    asm volatile("inb %1, %0" : "=a"(status) : "Nd"(0x64));
+    return status;
+}
+
 void kernel_main()
 {
     serial_write_string("Kernel is starting...\n");
 
     clear_screen();
 
-    for (int i = 0;; i++)
+    while (1)
     {
-        char num_buff[16];
-        int_to_string(i, num_buff);
-        char* output_prompt = "Current number: ";
-
-        char output[128];
-        int j = 0;
-        while (output_prompt[j] != '\0')
+        unsigned char status = get_kb_status();
+        if ((status & 0x01) == 1)
         {
-            output[j] = output_prompt[j];
-            j++;
-        }
+            unsigned char scancode = poll_kb();
+            if (scancode & 0x80)
+            {
+                continue; // Ignore key release events
+            }
+            char scancode_hex[3];
+            char_to_hex(scancode, scancode_hex);
 
-        int k = 0;
-        while (num_buff[k] != '\0')
-        {
-            output[j + k] = num_buff[k];
-            k++;
+            char ascii = KEYBOARD_LUT[scancode];
+            char key_pressed[2] = {ascii, '\0'};
+
+            serial_write_string("Key pressed: ");
+            serial_write_string(key_pressed);
+
+            terminal_print(scancode_hex);
+            terminal_print(": ");
+            terminal_print(key_pressed);
+            terminal_print("\n");
         }
-        output[j + k] = '\0';
-        print_prompt(output);
-        wait(100000000);
     }
 
     serial_write_string("Kernel has finished executing.\n");
