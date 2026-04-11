@@ -1,6 +1,6 @@
 static volatile char* const video_memory = (volatile char*)0xb8000;
-static const int cols = 80;
-static const int rows = 25;
+static const int VGA_WIDTH = 80;
+static const int VGA_HEIGHT = 25;
 
 static int cursor_row = 0;
 static int cursor_col = 0;
@@ -38,9 +38,9 @@ static void memcpy(char* dest, const char* src, int count)
 
 static void scroll()
 {
-    int src_index = cols * 2;
+    int src_index = VGA_WIDTH * 2;
     int dest_index = 0;
-    int count = (rows - 1) * cols * 2;
+    int count = (VGA_HEIGHT - 1) * VGA_WIDTH * 2;
     memcpy(video_memory + dest_index, video_memory + src_index, count);
 }
 
@@ -53,7 +53,7 @@ static void terminal_putchar(char c)
     }
     else
     {
-        int index = (cursor_row * cols + cursor_col) *
+        int index = (cursor_row * VGA_WIDTH + cursor_col) *
                     2;                  // Calculate the index for the given row and column
         video_memory[index] = c;        // Character
         video_memory[index + 1] = 0x07; // Light grey on black background
@@ -61,15 +61,15 @@ static void terminal_putchar(char c)
         cursor_col++;
     }
 
-    if (cursor_col >= cols)
+    if (cursor_col >= VGA_WIDTH)
     {
         cursor_col = 0;
         cursor_row++;
     }
-    if (cursor_row >= rows)
+    if (cursor_row >= VGA_HEIGHT)
     {
         scroll();
-        cursor_row = rows - 1; // Reset to the bottom of the screen
+        cursor_row = VGA_HEIGHT - 1; // Reset to the bottom of the screen
     }
 }
 
@@ -89,6 +89,10 @@ static void terminal_print(const char* str)
 
 static void terminal_print_at(const char* str, int row, int col)
 {
+    if (row < 0 || row >= VGA_HEIGHT || col < 0 || col >= VGA_WIDTH)
+    {
+        return; // Invalid position, do nothing
+    }
     cursor_row = row;
     cursor_col = col;
     terminal_print(str);
@@ -103,7 +107,7 @@ static void print_prompt(const char* str)
 
 static void clear_screen()
 {
-    for (int i = 0; i < rows * cols; i++)
+    for (int i = 0; i < VGA_HEIGHT * VGA_WIDTH; i++)
     {
         video_memory[i * 2] = ' ';      // Clear the screen by writing spaces
         video_memory[i * 2 + 1] = 0x00; // Light grey on black background
@@ -116,6 +120,7 @@ static void wait(int time)
 {
     for (int i = 0; i < 100000000; i++)
     {
+        asm volatile("" ::: "memory");
     }
 }
 
