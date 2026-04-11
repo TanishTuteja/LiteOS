@@ -1,4 +1,4 @@
-static char* const video_memory = (const char*)0xb8000;
+static volatile char* const video_memory = (volatile char*)0xb8000;
 static const int cols = 80;
 static const int rows = 25;
 
@@ -18,7 +18,17 @@ static inline void serial_write_string(const char* str)
     }
 }
 
-static void print_char(char c)
+static int strlen(const char* str)
+{
+    int len = 0;
+    while (str[len] != '\0')
+    {
+        len++;
+    }
+    return len;
+}
+
+static void terminal_putchar(char c)
 {
     if (c == '\n')
     {
@@ -46,12 +56,32 @@ static void print_char(char c)
     }
 }
 
-static void print(const char* str)
+static void terminal_write(const char* str, int length)
 {
-    for (int i = 0; str[i] != '\0'; i++)
+    for (int i = 0; i < length; i++)
     {
-        print_char(str[i]);
+        terminal_putchar(str[i]);
     }
+}
+
+static void terminal_print(const char* str)
+{
+    int len = strlen(str);
+    terminal_write(str, len);
+}
+
+static void terminal_print_at(const char* str, int row, int col)
+{
+    cursor_row = row;
+    cursor_col = col;
+    terminal_print(str);
+}
+
+static void print_prompt(const char* str)
+{
+    terminal_print("> ");
+    terminal_print(str);
+    terminal_print("\n");
 }
 
 static void clear_screen()
@@ -72,17 +102,63 @@ static void wait(int time)
     }
 }
 
+static int int_to_string(int value, char* buffer)
+{
+    int i = 0;
+
+    if (value == 0)
+    {
+        buffer[0] = '0';
+        buffer[1] = '\0';
+        return;
+    }
+
+    while (value > 0)
+    {
+        buffer[i++] = (value % 10) + '0'; // Convert digit to character
+        value /= 10;
+    }
+    buffer[i] = '\0';
+
+    // Reverse the string
+    for (int j = 0; j < i / 2; j++)
+    {
+        char temp_char = buffer[j];
+        buffer[j] = buffer[i - j - 1];
+        buffer[i - j - 1] = temp_char;
+    }
+    return i;
+}
+
 void kernel_main()
 {
-    int cols = 80;
     serial_write_string("Kernel is starting...\n");
 
     clear_screen();
 
-    while (1)
+    for (int i = 0;; i++)
     {
-        print("Hello, World! ");
-        wait(1000000000);
+        char num_buff[16];
+        int_to_string(i, num_buff);
+        char* output_prompt = "Current number: ";
+
+        char output[128];
+        int j = 0;
+        while (output_prompt[j] != '\0')
+        {
+            output[j] = output_prompt[j];
+            j++;
+        }
+
+        int k = 0;
+        while (num_buff[k] != '\0')
+        {
+            output[j + k] = num_buff[k];
+            k++;
+        }
+        output[j + k] = '\0';
+        print_prompt(output);
+        wait(10000000000);
     }
 
     serial_write_string("Kernel has finished executing.\n");
