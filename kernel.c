@@ -28,11 +28,36 @@ static int strlen(const char* str)
     return len;
 }
 
+static void strcpy(char* dest, const char* src)
+{
+    int i = 0;
+    while (src[i] != '\0')
+    {
+        dest[i] = src[i];
+        i++;
+    }
+    dest[i] = '\0';
+}
+
+static void strcat(char* dest, const char* src)
+{
+    int dest_len = strlen(dest);
+    strcpy(dest + dest_len, src);
+}
+
 static void memcpy(char* dest, const char* src, int count)
 {
     for (int i = 0; i < count; i++)
     {
         dest[i] = src[i];
+    }
+}
+
+static void memset(char* dest, char value, int count)
+{
+    for (int i = 0; i < count; i++)
+    {
+        dest[i] = value;
     }
 }
 
@@ -42,6 +67,11 @@ static void scroll()
     int dest_index = 0;
     int count = (VGA_HEIGHT - 1) * VGA_WIDTH * 2;
     memcpy(video_memory + dest_index, video_memory + src_index, count);
+    for (int i = 0; i < VGA_WIDTH; i++)
+    {
+        video_memory[(VGA_HEIGHT - 1) * VGA_WIDTH * 2 + i * 2] = ' ';
+        video_memory[(VGA_HEIGHT - 1) * VGA_WIDTH * 2 + i * 2 + 1] = 0x00;
+    }
 }
 
 static void terminal_putchar(char c)
@@ -118,7 +148,7 @@ static void clear_screen()
 
 static void wait(int time)
 {
-    for (int i = 0; i < 100000000; i++)
+    for (int i = 0; i < time; i++)
     {
         asm volatile("" ::: "memory");
     }
@@ -180,7 +210,7 @@ void kernel_main()
         }
         output[j + k] = '\0';
         print_prompt(output);
-        wait(10000000000);
+        wait(100000000);
     }
 
     serial_write_string("Kernel has finished executing.\n");
