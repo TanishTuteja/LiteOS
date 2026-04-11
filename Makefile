@@ -29,4 +29,7 @@ clean:
 rebuild: clean all
 
 run: liteos.iso
+	qemu-system-x86_64 -cdrom liteos.iso -serial stdio
+
+run-release: liteos.iso
 	qemu-system-x86_64 -cdrom liteos.iso
